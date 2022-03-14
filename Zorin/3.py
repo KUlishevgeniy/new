@@ -2,6 +2,7 @@
 # проверить содержимое ввода данных в на соответствие в базе данных
 import mysql.connector as conn
 from tkinter import *
+from tkinter import messagebox
 
 def click():
     mydb = conn.connect(host='127.0.0.1', database='users', user="root", password="")
@@ -10,12 +11,16 @@ def click():
     c = mydb.cursor()
     c.execute(f"SELECT * FROM login WHERE login = '{login_in}'AND password = '{password_in}'")
     user = c.fetchall()
-    window_2 = Tk()
-    window_2.title("Вход")
-    window_2.geometry("200x200")
 
-    inf = Label(window_2, text=user[0])
-    inf.grid(column=0, row=0)
+    if len(user) != 0:
+        window_2 = Tk()
+        window_2.title("Вход")
+        window_2.geometry("200x200")
+        inf = Label(window_2, text=user[0])
+        inf.grid(column=0, row=0)
+    else:
+        messagebox.showerror('Ошибка', 'Пользователь не найден')
+
     window_2.mainloop()
 
 
