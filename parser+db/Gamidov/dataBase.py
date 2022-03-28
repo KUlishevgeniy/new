@@ -10,16 +10,19 @@ class DataBase:
     def clear(self, table):
         self.mycursor.execute("TRUNCATE TABLE " + table)
 
-    def add(self, phones):
-        str = ''
+    def add_phone(self, phones):
+        str1 = ''
+        str2 = ''
         for phone in phones:
-            str = str + " ('" + phone.id + "', '" + phone.name + "', '" + phone.brand + "', '" + phone.price + "'),"
-        str = str[:len(str) - 1]
-        print("INSERT INTO phone (id, name, brand, price) VALUES" + str)
-        self.mycursor.execute("INSERT INTO phone (id, name, brand, price) VALUES" + str)
+            str1 = str1 + " ('" + phone.id + "', '" + phone.name + "', '" + phone.brand + "', '" + phone.price + "'),"
+            str2 = str2 + " ('" + phone.specific.type + "', '" + phone.specific.OC + "', '" + phone.specific.typeSim + "', '" + phone.specific.countSim + "', '" + phone.specific.weight + "', '" + phone.specific.proportions + "'),"
+        str1 = str1[:len(str1) - 1]
+        str2 = str2[:len(str2) - 1]
+        self.mycursor.execute("INSERT INTO phone (id, name, brand, price) VALUES" + str1)
+        self.mydb.commit()
+        self.mycursor.execute("INSERT INTO specification (Type, OC, TypeSim, CountSim, Weight, Proportions) VALUES" + str2)
         self.mydb.commit()
 
 
     def __del__(self):
-        self.mycursor.close()
         self.mydb.close()
