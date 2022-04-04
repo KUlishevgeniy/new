@@ -1,6 +1,7 @@
 #Подключение к базе данных
 
 import mysql.connector
+
 from mysql.connector import Error
 mydb = mysql.connector.connect(host='127.0.0.1', database='new', user='root', password='')
 mycursor = mydb.cursor()
