@@ -9,7 +9,8 @@ from bs4 import BeautifulSoup
 
 
 def parsSpecific(_href):
-    r = requests.get(_href)
+    r = requests.get(_href, verify=False)
+
     content = r.text
     soup = BeautifulSoup(content, 'lxml')
     html_temp = soup.find_all('table', class_='tabs_table')
@@ -51,7 +52,7 @@ def parsSpecific(_href):
 
 
 URL_TEMPLATE = "https://store77.net/telefony/"
-r = requests.get(URL_TEMPLATE)
+r = requests.get(URL_TEMPLATE, verify=False)
 content = r.text
 
 soup = BeautifulSoup(content, 'lxml')
@@ -71,8 +72,8 @@ rep = ["name': '", "id': '", "price': ", "brand': '", '<a href="']
 
 phones = []
 
-for i in range(1, page_max + 1):
-    r = requests.get(URL_TEMPLATE + "?pagesize=12&PAGEN_1=" + str(i))
+for i in range(1, 3):     #page_max + 1
+    r = requests.get(URL_TEMPLATE + "?pagesize=12&PAGEN_1=" + str(i), verify=False)
     content = r.text
     soup = BeautifulSoup(content, 'lxml')
     html_name = soup.find_all('h2', class_='bp_text_info bp_width_fix')
