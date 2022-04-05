@@ -11,12 +11,14 @@ import pandas as pd
 import urllib3
 import os.path as path
 from copy import copy
+import os
 
+
+obj_pointer = 0
 
 urllib3.disable_warnings()
 #import colorama as color 
-blacklisted_url = ["https://store77.net/chasy_apple_watch_nike_se","https://store77.net/service_center","https://store77.net/apple_imac_pro_27","https://store77.net/chasy_apple_watch_nike_se",
-                   "https://store77.net/programmy_i_uslugi/sozdanie_uchetnoy_zapisi_apple_id_ili_google","https://store77.net/naushniki_samsung"]
+blacklisted_url = ["https://store77.net/chasy_apple_watch_nike_se"]
 goods = []
 links = []
 
@@ -111,7 +113,9 @@ def trans(text):
 ".":"_",
 "/":"_",
 "\\":"_",
-"&quot":"_"
+"&quot":"_",
+"&amp":"_",
+
 }
     for char in matrix.keys():
         text = text.replace(char,matrix[char])
@@ -185,6 +189,62 @@ def ParceStore77Net_Sections(url):
 
 
 
+
+
+
+
+
+
+
+
+
+
+def ParceStore77Deps(file):
+    chars = []
+    chars_dict = {}
+    try:
+        df = pd.read_excel(file)
+    except Exception as e:
+        print(e)
+    df = df.reset_index()
+    for idx, row in tqdm(df.iterrows()):
+        try:
+            data = GetDataFromURL(row["link"][1:-2])
+            soup = bs(data,"lxml")
+            images = soup.find_all("img",class_="")
+        except Exception as e:
+            print("fail")
+        links=[]
+        global obj_pointer
+        try:
+            for img in images:
+                img_data = GetDataFromURL(img["src"]).text
+                with open("." + os.sep + "img" + os.sep + str(obj_pointer) + ".jpg","wb") as f:
+                    f.write(img_data)
+        except Exception:
+            pass
+        try:
+            data = GetDataFromURL(row["link"][1:-2])
+            soup = bs(data,"lxml")
+            tds = soup.find_all("td")
+        except Exception as e:
+            print("fail")
+        try:
+            for td in tds:
+                chars.append(td.text)
+            for i in range(0,len(chars)-1):
+                if i % 2:
+                    chars_dict[chars[i]] = chars[i+1]
+        except Exception:
+            pass
+        dump = pd.DataFrame(chars_dict)
+        dump.to_excel("." + os.sep + "chars" + str(obj_pointer) + ".xlsx")
+    obj_pointer +=1
+
+
+
+
+
 def Insert_to_database(file):
     df = pd.read_excel(file)
     try:
@@ -194,7 +254,7 @@ def Insert_to_database(file):
         print(e)
     df = df.reset_index()
     for index, row in df.iterrows():
-        c.execute(f"INSERT INTO catalog (art,name,price,brand,category) VALUES ('{row['arts'][1:-2]}','{row['name'][1:-2]}','{str(row['price'][0:-1])}',{row['brand'][1:-2]},{row['cat'][1:-2]})")
+        #c.execute(f"INSERT INTO catalog (art,name,price,brand,category,links) VALUES ('{row['arts'][1:-2]}','{row['name'][1:-2]}','{str(row['price'][0:-1])}',{row['brand'][1:-2]},{row['cat'][1:-2]},{row['link'][1:-2]})")
         mydb.commit()
 
 
@@ -218,10 +278,10 @@ def SaveData():
 
 
 def ParceStore77Net_EachSection(link):
-    print("New line")
+    #print("New line")
     l = copy(link)
     try:
-        response = GetDataFromURL(link)
+        response = GetDataFromURL(link+"/")
     except RecursionError:
         print("Website died")
         return
@@ -232,7 +292,7 @@ def ParceStore77Net_EachSection(link):
     soup = bs(response,"lxml")
     data = soup.find_all("a",class_="bp_hover_text_but_cart")
     #print(data)
-    print(link)
+    #print(link)
     global links
     data = str(data).split(' onclick="dataLayer.push({')
     link = data[0]
@@ -255,7 +315,7 @@ def ParceStore77Net_EachSection(link):
             cat = property_[5][1]
             dlink =l+"/"+trans(name)
             dlink =dlink[2:-3]
-            print(dlink)
+            #print(dlink)
             parced_data.append([art,name,price,brand,cat,dlink])
         except Exception:
             pass
@@ -276,6 +336,8 @@ def ParceStore77Net():
     global goods
     print(len(goods))
     SaveData()
+    ParceStore77Deps("res.xlsx")
+
 
 
 
