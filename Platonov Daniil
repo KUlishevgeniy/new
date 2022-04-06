@@ -1,0 +1,13 @@
+from random import randint
+
+k = 20
+num = []
+for i in range (k):
+    num.append(randint(0, 500))
+print(num)
+
+for i in range (k-1):
+    for j in range(k-i-1):
+        if num[j] > num[j+1]:
+            num[j], num[j+1] = num[j+1], num[j]
+print(num)
