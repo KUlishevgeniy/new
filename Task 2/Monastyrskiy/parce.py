@@ -254,7 +254,7 @@ def Insert_to_database(file):
         print(e)
     df = df.reset_index()
     for index, row in df.iterrows():
-        #c.execute(f"INSERT INTO catalog (art,name,price,brand,category,links) VALUES ('{row['arts'][1:-2]}','{row['name'][1:-2]}','{str(row['price'][0:-1])}',{row['brand'][1:-2]},{row['cat'][1:-2]},{row['link'][1:-2]})")
+        c.execute(f"INSERT INTO catalog (art,name,price,brand,category,links) VALUES ('{row['arts'][1:-2]}','{row['name'][1:-2]}','{str(row['price'][0:-1])}',{row['brand'][1:-2]},{row['cat'][1:-2]},{row['link'][1:-2]})")
         mydb.commit()
 
 
