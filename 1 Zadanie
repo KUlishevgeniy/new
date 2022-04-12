@@ -7,4 +7,4 @@ def bubble_sort(list1):
                 list1[j] = list1[j+1] 
                 list1[j+1] = temp 
     return list1   
-print("The sorted list is: ", bubble_sort(list1)) 
+print("Отсортированный лист: ", bubble_sort(list1)) 
