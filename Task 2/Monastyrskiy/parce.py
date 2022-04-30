@@ -1,5 +1,5 @@
 import requests as r
-from bs4 import BeautifulSoup as bs 
+from bs4 import BeautifulSoup as bs
 import mysql.connector as conn
 import time
 import configparser
@@ -12,12 +12,15 @@ import urllib3
 import os.path as path
 from copy import copy
 import os
+import shutil
 
+
+URL = "https://store77.net/"
 
 obj_pointer = 0
 
 urllib3.disable_warnings()
-#import colorama as color 
+#import colorama as color
 blacklisted_url = ["https://store77.net/chasy_apple_watch_nike_se"]
 goods = []
 links = []
@@ -36,92 +39,6 @@ logging.basicConfig(format='%(asctime)s %(message)s')
 
 
 
-def trans(text):
-    matrix = {
-"а":"a"
-,"б":"b"
-,"в":"v"
-,"г":"g"
-,"д":"d"
-,"е":"e"
-,"ё":"yo"
-,"ж":"zh"
-,"з":"z"
-,"и":"i"
-,"й":"y"
-,"к":"k"
-,"л":"l"
-,"м":"m"
-,"н":"n"
-,"о":"o"
-,"п":"p"
-,"р":"r"
-,"с":"s"
-,"т":"t"
-,"у":"u"
-,"ф":"f"
-,"х":"h"
-,"ц":"ts"
-,"ч":"ch"
-,"ш":"sh"
-,"щ":"shch"
-,"ъ":""
-,"ы":"y"
-,"ь":""
-,"э":"eh"
-,"ю":"yu"
-,"я":"ya"
-," ":"_"
-,"А":"A"
-,"Б":"B"
-,"В":"V"
-,"Г":"G"
-,"Д":"D"
-,"Е":"E"
-,"Ё":"Yo"
-,"Ж":"Zh"
-,"З":"Z"
-,"И":"I"
-,"Й":"Y"
-,"К":"K"
-,"Л":"L"
-,"М":"M"
-,"Н":"N"
-,"О":"O"
-,"П":"P"
-,"Р":"R"
-,"С":"S"
-,"Т":"T"
-,"У":"U"
-,"Ф":"F"
-,"Х":"H"
-,"Ц":"Ts"
-,"Ч":"Ch"
-,"Ш":"Sh"
-,"Щ":"Shch"
-,"Ъ":""
-,"Ы":"Y"
-,"Ь":""
-,"Э":"Eh"
-,"Ю":"Yu"
-,"Я":"Ya"
-     }
-    comp_change = {
-" ":"_",
-"(":"_",
-")":"_",
-".":"_",
-"/":"_",
-"\\":"_",
-"&quot":"_",
-"&amp":"_",
-
-}
-    for char in matrix.keys():
-        text = text.replace(char,matrix[char])
-    for char in comp_change.keys():
-        text = text.replace(char,comp_change[char])
-    return text
 try:
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE)
@@ -139,7 +56,7 @@ def GetDataFromURL(url: str) -> str:
     try:
         response = r.get(url,verify=False)
     except Exception:
-        raise NotOKResponseCode("Connection died")
+        raise NotOKResponseCode(f"Something is wrong with the url:{url}, page returned code: {response.status_code}")
     if response.status_code == 200:
         return response.text
     else:
@@ -190,18 +107,8 @@ def ParceStore77Net_Sections(url):
 
 
 
-
-
-
-
-
-
-
-
-
 def ParceStore77Deps(file):
-    chars = []
-    chars_dict = {}
+    desc=[]
     try:
         df = pd.read_excel(file)
     except Exception as e:
@@ -209,43 +116,53 @@ def ParceStore77Deps(file):
     df = df.reset_index()
     for idx, row in tqdm(df.iterrows()):
         try:
-            data = GetDataFromURL(row["link"][1:-2])
+            data = GetDataFromURL(row["link"])
             soup = bs(data,"lxml")
-            images = soup.find_all("img",class_="")
+            #print(row['link'])
+            global URL
+            divs = soup.find_all("div",class_="slick-offer-img-big")
+            for div in divs:
+                img = div.find("img")
+                image_src = img["src"]
+                #print(image_src)
+
         except Exception as e:
-            print("fail")
-        links=[]
-        global obj_pointer
+            ##print("Image load fail")
+            print(e)
         try:
-            for img in images:
-                img_data = GetDataFromURL(img["src"]).text
-                with open("." + os.sep + "img" + os.sep + str(obj_pointer) + ".jpg","wb") as f:
-                    f.write(img_data)
+            print(image_src)
+            try:
+                if not "https" in image_src:
+                    image_src ="https://store77.net"+image_src
+                response = r.get(image_src,stream=True,verify=False)
+            except Exception as e:
+                print(e)
+            with open("." + os.sep + "img" + os.sep + str(idx+1)+"."+image_src.split(".")[-1],"wb") as f:
+                shutil.copyfileobj(response.raw,f)
         except Exception:
-            pass
+            print(e)
         try:
-            data = GetDataFromURL(row["link"][1:-2])
-            soup = bs(data,"lxml")
-            tds = soup.find_all("td")
-        except Exception as e:
-            print("fail")
-        try:
-            for td in tds:
-                chars.append(td.text)
-            for i in range(0,len(chars)-1):
-                if i % 2:
-                    chars_dict[chars[i]] = chars[i+1]
+            data = GetDataFromURL(row["link"])
         except Exception:
-            pass
-        dump = pd.DataFrame(chars_dict)
-        dump.to_excel("." + os.sep + "chars" + str(obj_pointer) + ".xlsx")
-    obj_pointer +=1
+            print(e)
+        #print(row["link"])
+        soup = bs(data,"lxml")
+        Description = soup.find("div",class_ = "col-sm-6 wrap_descr_b")
+        Description = str(Description)
+        Description = Description.replace('<div class="col-sm-6 wrap_descr_b>',"")
+        Description = Description.replace("</div>","")
+        desc.append(Description)
+    df = pd.read_excel("res.xlsx")
+    df["D"] = desc
+    df.to_excel("res.xlsx")
 
 
 
 
 
-def Insert_to_database(file):
+
+
+def Insert_to_database(file,full=False):
     df = pd.read_excel(file)
     try:
         mydb=conn.connect(host=host,database=dbname,user=login,password=password)
@@ -253,13 +170,35 @@ def Insert_to_database(file):
     except Exception as e:
         print(e)
     df = df.reset_index()
-    for index, row in df.iterrows():
-        c.execute(f"INSERT INTO catalog (art,name,price,brand,category,links) VALUES ('{row['arts'][1:-2]}','{row['name'][1:-2]}','{str(row['price'][0:-1])}',{row['brand'][1:-2]},{row['cat'][1:-2]},{row['link'][1:-2]})")
-        mydb.commit()
+    for index, row in tqdm(df.iterrows()):
+        article ="".join(row['arts'])
+        name ="".join(row['name'])
+        price ="".join(str(row['price']))
+        brand ="".join(row['brand'])
+        category ="".join(row['cat'])
+        link ="".join(row['link'])
+        Description ="".join(row['D'])
+
+        if not full:
+            req_str = f"INSERT INTO catalog (art,name,price,brand,category,links) VALUES ('{article[1:-2]}','{name[1:-2]}','{str(price)[:-2]}','{brand[1:-2]}','{category[1:-2]}','{link}')"
+            print(req_str)
+            try:
+                c.execute(req_str)
+            except Exception as e:
+                print(e)
+            mydb.commit()
+        else:
+            req_str = f"INSERT INTO catalog (art,name,price,brand,category,links,descr) VALUES ({article[1:-2]},{name[1:-2]},'{str(price)[:-2]}',{brand[1:-2]},{category[1:-2]},'{link}','{str(Description)}')"
+            print(req_str)
+            try:
+                c.execute(req_str)
+            except Exception as e:
+                print(e)
+            mydb.commit()
 
 
 def SaveData():
-    
+
     global goods
     arts = [elem[0] for elem in goods]
     name = [elem[1] for elem in goods]
@@ -271,14 +210,11 @@ def SaveData():
         for i in tqdm(range(0,len(arts))):
             df = pd.DataFrame({"arts":arts,"name":name,"price":price,"brand":brand,"cat":cat,"link":dlink})
             df.to_excel("res.xlsx")
-            Insert_to_database("res.xlsx")
-    else:
-        Insert_to_database("res.xlsx")
-
-
+            #Insert_to_database("res.xlsx")
 
 def ParceStore77Net_EachSection(link):
     #print("New line")
+    parced_links = []
     l = copy(link)
     try:
         response = GetDataFromURL(link+"/")
@@ -290,6 +226,12 @@ def ParceStore77Net_EachSection(link):
         ParceStore77Net_EachSection(link)
 
     soup = bs(response,"lxml")
+    data = soup.find_all("div",class_="blocks_product_fix_w")
+    for div in data:
+        link = div.find("a",href=True)
+        href = link["href"]
+        parced_links.append(href)
+    idx = 0
     data = soup.find_all("a",class_="bp_hover_text_but_cart")
     #print(data)
     #print(link)
@@ -313,10 +255,11 @@ def ParceStore77Net_EachSection(link):
             price = property_[3][1]
             brand = property_[4][1]
             cat = property_[5][1]
-            dlink =l+"/"+trans(name)
-            dlink =dlink[2:-3]
+            dlink = parced_links[idx]
+            idx += 1
             #print(dlink)
-            parced_data.append([art,name,price,brand,cat,dlink])
+            global URL
+            parced_data.append([art,name,price,brand,cat,URL[:-1] + dlink])
         except Exception:
             pass
     global goods
@@ -325,7 +268,7 @@ def ParceStore77Net_EachSection(link):
 
 
 def ParceStore77Net():
-    URL = "https://store77.net/"
+    global URL
     sections = ParceStore77Net_Sections(URL)
     for page in tqdm(sections):
         print(page)
@@ -337,6 +280,7 @@ def ParceStore77Net():
     print(len(goods))
     SaveData()
     ParceStore77Deps("res.xlsx")
+    Insert_to_database("res.xlsx",full=True)
 
 
 
